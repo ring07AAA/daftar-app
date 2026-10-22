@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="دفتر">
+  <meta name="description" content="دفتر — أداة عربية بسيطة لإنشاء الفواتير ومعاينتها وطباعتها بصيغة PDF.">
+  <title>دفتر | إنشاء الفواتير</title>
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --ink: #17211f;
+      --muted: #64736f;
+      --line: #dce5e2;
+      --surface: #ffffff;
+      --bg: #f3f7f6;
+      --danger: #b42318;
+      --radius: 18px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      background: var(--surface); border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 5;
+    }
+    .topbar-inner {
+      max-width: 1180px; margin: auto; padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 850; font-size: 1.25rem; }
+    .brand-mark {
+      width: 40px; height: 40px; display: grid; place-items: center;
+      color: white; background: var(--primary); border-radius: 13px; font-weight: 900;
+    }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .container { max-width: 1180px; margin: 28px auto; padding: 0 20px 40px; }
+    .intro { margin-bottom: 22px; }
+    .intro h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -.03em; }
+    .intro p { margin: 0; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .92fr); gap: 20px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: 0 5px 22px rgba(20, 50, 45, .035); }
+    .panel h2 { font-size: 1.08rem; margin: 0 0 16px; }
+    .section-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 24px 0 12px; }
+    .section-title h2 { margin: 0; }
+    .section-title:first-of-type { margin-top: 0; }
+    .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+    .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: .88rem; font-weight: 700; }
+    input, textarea, select {
+      width: 100%; min-width: 0; border: 1px solid #cbd8d4; border-radius: 10px;
+      padding: 10px 12px; background: white; color: var(--ink); outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,118,110,.12); }
+    input[type="number"] { direction: ltr; text-align: right; }
+    .items-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: right; padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+    td input { min-width: 70px; padding: 8px; }
+    td:first-child input { min-width: 125px; }
+    .item-total { white-space: nowrap; font-weight: 750; direction: ltr; text-align: right; }
+    .remove-btn { border: 0; color: var(--danger); background: #fff1f0; border-radius: 8px; padding: 6px 9px; }
+    .btn {
+      display: inline-flex; justify-content: center; align-items: center; gap: 7px;
+      border: 1px solid transparent; border-radius: 11px; padding: 10px 14px;
+      font-weight: 750; transition: .15s ease; text-decoration: none;
+    }
+    .btn-primary { color: white; background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { color: var(--ink); background: white; border-color: var(--line); }
+    .btn-secondary:hover { background: #f7faf9; }
+    .btn-danger { color: var(--danger); background: #fff1f0; }
+    .btn-small { padding: 7px 10px; font-size: .86rem; }
+    .hint { color: var(--muted); font-size: .8rem; margin: 8px 0 0; }
+    .totals { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+    .total-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+    .total-row.grand { font-size: 1.2rem; font-weight: 850; border-top: 1px dashed var(--line); margin-top: 7px; padding-top: 13px; }
+    .preview-panel { position: sticky; top: 90px; }
+    .preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .preview-toolbar h2 { margin: 0; }
+    .invoice {
+      background: white; color: #182321; border: 1px solid #e1e7e5;
+      border-radius: 12px; padding: clamp(16px, 3vw, 28px); min-height: 560px;
+    }
+    .invoice-head { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--primary); padding-bottom: 18px; }
+    .invoice-brand { font-size: 1.45rem; font-weight: 900; color: var(--primary); margin: 0; overflow-wrap: anywhere; }
+    .invoice-sub { color: #66736f; font-size: .83rem; margin: 4px 0 0; overflow-wrap: anywhere; }
+    .invoice-title { font-size: 1.3rem; font-weight: 850; margin: 0; }
+    .invoice-meta { font-size: .82rem; color: #52615d; margin-top: 7px; }
+    .invoice-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+    .invoice-parties h3 { font-size: .78rem; color: #71807b; margin: 0 0 5px; }
+    .invoice-parties p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+    .invoice-table { font-size: .84rem; }
+    .invoice-table th { background: #f1f7f5; color: #42534e; }
+    .invoice-table td, .invoice-table th { padding: 9px 6px; }
+    .invoice-bottom { display: grid; grid-template-columns: 1fr minmax(145px, .8fr); gap: 20px; margin-top: 18px; }
+    .invoice-notes { color: #65736e; font-size: .82rem; white-space: pre-line; overflow-wrap: anywhere; }
+    .invoice-totals .total-row { font-size: .86rem; padding: 4px 0; }
+    .invoice-totals .grand { font-size: 1rem; }
+    .invoice-footer { border-top: 1px solid #e5ece9; padding-top: 12px; margin-top: 28px; font-size: .75rem; color: #72807b; text-align: center; }
+    .notice { background: #fff8e6; border: 1px solid #f2dfad; color: #735b19; border-radius: 12px; padding: 12px 14px; font-size: .84rem; margin-top: 18px; }
+    .status { min-height: 1.5em; font-size: .88rem; color: var(--primary-dark); margin-top: 8px; }
+    .footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 0 20px 30px; }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .preview-panel { position: static; }
+    }
+    @media (max-width: 560px) {
+      .topbar-inner { padding: 11px 14px; align-items: flex-start; }
+      .top-actions .btn { padding: 8px 10px; font-size: .82rem; }
+      .container { padding: 0 12px 28px; margin-top: 20px; }
+      .panel { padding: 15px; }
+      .fields { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .invoice-head { flex-direction: column; }
+      .invoice-parties { grid-template-columns: 1fr; }
+      .invoice-bottom { grid-template-columns: 1fr; }
+      .invoice { min-height: auto; }
+    }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      body { background: white !important; }
+      .topbar, .intro, .editor-panel, .preview-toolbar, .notice, .footer { display: none !important; }
+      .container { max-width: none; margin: 0; padding: 0; }
+      .layout { display: block; }
+      .preview-panel, .panel { position: static; border: 0; box-shadow: none; padding: 0; }
+      .invoice { border: 0; border-radius: 0; padding: 0; min-height: 0; }
+      .invoice-table tr, .invoice-parties, .invoice-bottom { break-inside: avoid; }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-mark">د</span><span>دفتر</span></div>
+      <div class="top-actions">
+        <button class="btn btn-secondary" id="saveBtn" type="button">حفظ المسودة</button>
+        <button class="btn btn-primary" id="printTopBtn" type="button">طباعة / PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <h1>أنشئ فاتورتك في دقائق</h1>
+      <p>أدخل بياناتك، راجع الفاتورة مباشرة، ثم اطبعها أو احفظها بصيغة PDF.</p>
+    </section>
+
+    <div class="layout">
+      <section class="panel editor-panel" aria-label="بيانات الفاتورة">
+        <div class="section-title"><h2>بيانات الفاتورة</h2></div>
+        <div class="fields">
+          <div class="field">
+            <label for="invoiceNo">رقم الفاتورة</label>
+            <input id="invoiceNo" autocomplete="off" value="INV-0001">
+          </div>
+          <div class="field">
+            <label for="invoiceDate">تاريخ الإصدار</label>
+            <input id="invoiceDate" type="date">
+          </div>
+          <div class="field">
+            <label for="currency">العملة</label>
+            <select id="currency">
+              <option value="SAR">ريال سعودي (SAR)</option>
+              <option value="YER">ريال يمني (YER)</option>
+              <option value="AED">درهم إماراتي (AED)</option>
+              <option value="EGP">جنيه مصري (EGP)</option>
+              <option value="JOD">دينار أردني (JOD)</option>
+              <option value="USD">دولار أمريكي (USD)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="dueDate">تاريخ الاستحقاق (اختياري)</label>
+            <input id="dueDate" type="date">
+          </div>
+        </div>
+
+        <div class="section-title"><h2>بيانات البائع</h2></div>
+        <div class="fields">
+          <div class="field">
+            <label for="sellerName">اسمك أو اسم النشاط</label>
+            <input id="sellerName" placeholder="مثال: مؤسسة الأفق">
+          </div>
+          <div class="field">
+            <label for="sellerContact">الهاتف أو البريد (اختياري)</label>
+            <input id="sellerContact" placeholder="وسيلة التواصل">
+          </div>
+          <div class="field full">
+            <label for="sellerAddress">العنوان (اختياري)</label>
+            <input id="sellerAddress" placeholder="المدينة، الدولة">
+          </div>
+        </div>
+
+        <div class="section-title"><h2>بيانات العميل</h2></div>
+        <div class="fields">
+          <div class="field">
+            <label for="clientName">اسم العميل</label>
+            <input id="clientName" placeholder="اسم العميل أو الشركة">
+          </div>
+          <div class="field">
+            <label for="clientContact">بيانات العميل (اختياري)</label>
+            <input id="clientContact" placeholder="هاتف أو بريد">
+          </div>
+        </div>
+
+        <div class="section-title">
+          <h2>بنود الفاتورة</h2>
+          <button class="btn btn-secondary btn-small" id="addItemBtn" type="button">＋ إضافة بند</button>
+        </div>
+        <div class="items-wrap">
+          <table aria-label="بنود الفاتورة">
+            <thead><tr><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+        <p class="hint">أدخل الأسعار قبل الضريبة. يمكنك ترك نسبة الضريبة صفرًا إذا لم تنطبق عليك، وتأكد من القواعد المحلية قبل إصدار فاتورة رسمية.</p>
+
+        <div class="section-title"><h2>الضريبة والخصم</h2></div>
+        <div class="fields">
+          <div class="field">
+            <label for="taxRate">نسبة الضريبة (%)</label>
+            <input id="taxRate" type="number" min="0" max="100" step="0.01" value="0">
+          </div>
+          <div class="field">
+            <label for="discount">الخصم (مبلغ)</label>
+            <input id="discount" type="number" min="0" step="0.01" value="0">
+          </div>
+          <div class="field full">
+            <label for="notes">ملاحظات (اختياري)</label>
+            <textarea id="notes" rows="3" placeholder="شكرًا لتعاملكم معنا."></textarea>
+          </div>
+        </div>
+
+        <div class="totals" aria-live="polite">
+          <div class="total-row"><span>المجموع قبل الخصم والضريبة</span><strong id="subtotalText">0.00</strong></div>
+          <div class="total-row"><span>الخصم</span><strong id="discountText">0.00</strong></div>
+          <div class="total-row"><span>الضريبة</span><strong id="taxText">0.00</strong></div>
+          <div class="total-row grand"><span>الإجمالي النهائي</span><strong id="grandText">0.00</strong></div>
+        </div>
+        <div class="top-actions" style="margin-top:18px">
+          <button class="btn btn-primary" id="printBtn" type="button">طباعة / حفظ PDF</button>
+          <button class="btn btn-secondary" id="newBtn" type="button">فاتورة جديدة</button>
+          <button class="btn btn-danger" id="clearBtn" type="button">مسح البيانات</button>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <p class="hint">الحفظ محلي على هذا المتصفح فقط. لا توجد حاليًا مزامنة سحابية أو حساب مستخدم.</p>
+      </section>
+
+      <section class="panel preview-panel" aria-label="معاينة الفاتورة">
+        <div class="preview-toolbar">
+          <h2>معاينة الفاتورة</h2>
+          <span class="hint">تتحدث تلقائيًا</span>
+        </div>
+        <article class="invoice" id="invoicePreview">
+          <div class="invoice-head">
+            <div>
+              <p class="invoice-brand" id="pSellerName">اسم النشاط</p>
+              <p class="invoice-sub" id="pSellerAddress">العنوان</p>
+              <p class="invoice-sub" id="pSellerContact"></p>
+            </div>
+            <div>
+              <p class="invoice-title">فاتورة</p>
+              <div class="invoice-meta">رقم: <span id="pInvoiceNo">INV-0001</span></div>
+              <div class="invoice-meta">تاريخ الإصدار: <span id="pInvoiceDate"></span></div>
+              <div class="invoice-meta" id="pDueWrap">الاستحقاق: <span id="pDueDate"></span></div>
+            </div>
+          </div>
+          <div class="invoice-parties">
+            <div><h3>فاتورة إلى</h3><p id="pClientName">اسم العميل</p><p class="invoice-sub" id="pClientContact"></p></div>
+            <div><h3>العملة</h3><p id="pCurrency">ريال سعودي (SAR)</p></div>
+          </div>
+          <table class="invoice-table">
+            <thead><tr><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+            <tbody id="pItemsBody"></tbody>
+          </table>
+          <div class="invoice-bottom">
+            <div class="invoice-notes" id="pNotes"></div>
+            <div class="invoice-totals">
+              <div class="total-row"><span>المجموع</span><strong id="pSubtotal">0.00</strong></div>
+              <div class="total-row"><span>الخصم</span><strong id="pDiscount">0.00</strong></div>
+              <div class="total-row"><span>الضريبة</span><strong id="pTax">0.00</strong></div>
+              <div class="total-row grand"><span>الإجمالي</span><strong id="pGrand">0.00</strong></div>
+            </div>
+          </div>
+          <div class="invoice-footer">تم إنشاء هذه الفاتورة باستخدام دفتر — يرجى التحقق من متطلبات الفوترة المحلية قبل استخدامها كفاتورة ضريبية رسمية.</div>
+        </article>
+      </section>
+    </div>
+
+    <div class="notice">
+      <strong>تنبيه:</strong> هذه أداة أولية لإنشاء الفواتير العامة، وليست برنامجًا محاسبيًا معتمدًا. لا ترفع معلومات حساسة على أجهزة مشتركة، ولا تعتبر هذه الفاتورة متوافقة تلقائيًا مع المتطلبات الضريبية في بلدك.
+    </div>
+  </main>
+  <footer class="footer">دفتر © <span id="year"></span> — نسخة تجريبية تعمل داخل المتصفح.</footer>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const STORAGE_KEY = "daftar_invoice_draft_v1";
+      const fieldIds = [
+        "invoiceNo", "invoiceDate", "dueDate", "currency", "sellerName",
+        "sellerContact", "sellerAddress", "clientName", "clientContact",
+        "taxRate", "discount", "notes"
+      ];
+      const currencyNames = {
+        SAR: "ريال سعودي (SAR)", YER: "ريال يمني (YER)",
+        AED: "درهم إماراتي (AED)", EGP: "جنيه مصري (EGP)",
+        JOD: "دينار أردني (JOD)", USD: "دولار أمريكي (USD)"
+      };
+
+      function todayLocal() {
+        const now = new Date();
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 10);
+      }
+
+      function safeNumber(value) {
+        const n = Number(value);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      }
+
+      function money(value) {
+        const currency = $("currency").value;
+        try {
+          return new Intl.NumberFormat("ar", {
+            style: "currency", currency: currency, maximumFractionDigits: 2
+          }).format(Number(value) || 0);
+        } catch (_) {
+          return (Number(value) || 0).toFixed(2) + " " + currency;
+        }
+      }
+
+      function text(id, value, fallback) {
+        $(id).textContent = value && String(value).trim() ? String(value).trim() : (fallback || "");
+      }
+
+      function getItems() {
+        return Array.from($("itemsBody").querySelectorAll("tr")).map((tr) => ({
+          description: tr.querySelector(".item-description").value.trim(),
+          quantity: safeNumber(tr.querySelector(".item-quantity").value),
+          price: safeNumber(tr.querySelector(".item-price").value)
+        }));
+      }
+
+      function addItem(item) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input class="item-description" aria-label="وصف البند" placeholder="مثال: تصميم شعار" maxlength="160"></td>
+          <td><input class="item-quantity" aria-label="الكمية" type="number" min="0" step="0.01" value="1"></td>
+          <td><input class="item-price" aria-label="سعر الوحدة" type="number" min="0" step="0.01" value="0"></td>
+          <td class="item-total">0.00</td>
+          <td><button type="button" class="remove-btn" aria-label="حذف البند">×</button></td>`;
+        if (item) {
+          tr.querySelector(".item-description").value = item.description || "";
+          tr.querySelector(".item-quantity").value = item.quantity ?? 1;
+          tr.querySelector(".item-price").value = item.price ?? 0;
+        }
+        tr.querySelectorAll("input").forEach((input) => input.addEventListener("input", render));
+        tr.querySelector(".remove-btn").addEventListener("click", () => {
+          tr.remove();
+          if (!$("itemsBody").children.length) addItem();
+          render();
+        });
+        $("itemsBody").appendChild(tr);
+        render();
+      }
+
+      function calculate() {
+        const rows = Array.from($("itemsBody").querySelectorAll("tr"));
+        let subtotal = 0;
+        rows.forEach((tr) => {
+          const quantity = safeNumber(tr.querySelector(".item-quantity").value);
+          const price = safeNumber(tr.querySelector(".item-price").value);
+          const total = quantity * price;
+          tr.querySelector(".item-total").textContent = money(total);
+          subtotal += total;
+        });
+        const discount = Math.min(safeNumber($("discount").value), subtotal);
+        const taxable = Math.max(0, subtotal - discount);
+        const taxRate = Math.min(100, safeNumber($("taxRate").value));
+        const tax = taxable * taxRate / 100;
+        return { subtotal, discount, tax, grand: taxable + tax };
+      }
+
+      function render() {
+        const totals = calculate();
+        const data = Object.fromEntries(fieldIds.map((id) => [id, $(id).value]));
+        text("pSellerName", data.sellerName, "اسم النشاط");
+        text("pSellerAddress", data.sellerAddress, "");
+        text("pSellerContact", data.sellerContact, "");
+        text("pInvoiceNo", data.invoiceNo, "—");
+        text("pInvoiceDate", data.invoiceDate || "—");
+        text("pDueDate", data.dueDate || "—");
+        $("pDueWrap").classList.toggle("hidden", !data.dueDate);
+        text("pClientName", data.clientName, "اسم العميل");
+        text("pClientContact", data.clientContact, "");
+        text("pCurrency", currencyNames[data.currency] || data.currency);
+        text("pNotes", data.notes, "");
+        $("subtotalText").textContent = money(totals.subtotal);
+        $("discountText").textContent = money(totals.discount);
+        $("taxText").textContent = money(totals.tax);
+        $("grandText").textContent = money(totals.grand);
+        $("pSubtotal").textContent = money(totals.subtotal);
+        $("pDiscount").textContent = money(totals.discount);
+        $("pTax").textContent = money(totals.tax);
+        $("pGrand").textContent = money(totals.grand);
+
+        const previewBody = $("pItemsBody");
+        previewBody.replaceChildren();
+        const items = getItems();
+        items.forEach((item) => {
+          const tr = document.createElement("tr");
+          [item.description || "—", String(item.quantity), money(item.price), money(item.quantity * item.price)]
+            .forEach((value) => {
+              const td = document.createElement("td");
+              td.textContent = value;
+              tr.appendChild(td);
+            });
+          previewBody.appendChild(tr);
+        });
+      }
+
+      function collectDraft() {
+        return {
+          fields: Object.fromEntries(fieldIds.map((id) => [id, $(id).value])),
+          items: getItems(),
+          savedAt: new Date().toISOString()
+        };
+      }
+
+      function setStatus(message) {
+        $("status").textContent = message;
+      }
+
+      function saveDraft(silent) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(collectDraft()));
+          if (!silent) setStatus("تم حفظ المسودة على هذا الجهاز.");
+        } catch (error) {
+          setStatus("تعذر الحفظ. قد يكون التخزين المحلي معطلًا في المتصفح.");
+        }
+      }
+
+      function loadDraft() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return false;
+          const draft = JSON.parse(raw);
+          if (!draft || typeof draft !== "object") return false;
+          if (draft.fields) {
+            fieldIds.forEach((id) => {
+              if (draft.fields[id] !== undefined) $(id).value = draft.fields[id];
+            });
+          }
+          $("itemsBody").replaceChildren();
+          if (Array.isArray(draft.items) && draft.items.length) draft.items.forEach(addItem);
+          else addItem();
+          render();
+          setStatus("تم استرجاع المسودة المحفوظة من هذا الجهاز.");
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function resetInvoice(clearSaved) {
+        fieldIds.forEach((id) => {
+          if (id === "invoiceDate") $(id).value = todayLocal();
+          else if (id === "invoiceNo") $(id).value = "INV-0001";
+          else if (id === "currency") $(id).value = "SAR";
+          else if (id === "taxRate" || id === "discount") $(id).value = "0";
+          else $(id).value = "";
+        });
+        $("itemsBody").replaceChildren();
+        addItem();
+        if (clearSaved) {
+          try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+          setStatus("تم مسح البيانات والمسودة المحفوظة من هذا المتصفح.");
+        } else {
+          setStatus("تم تجهيز فاتورة جديدة.");
+        }
+        render();
+      }
+
+      fieldIds.forEach((id) => $(id).addEventListener("input", render));
+      fieldIds.forEach((id) => $(id).addEventListener("change", render));
+      $("addItemBtn").addEventListener("click", () => addItem());
+      $("saveBtn").addEventListener("click", () => saveDraft(false));
+      $("printBtn").addEventListener("click", () => window.print());
+      $("printTopBtn").addEventListener("click", () => window.print());
+      $("newBtn").addEventListener("click", () => resetInvoice(false));
+      $("clearBtn").addEventListener("click", () => {
+        if (window.confirm("هل تريد مسح بيانات الفاتورة والمسودة المحفوظة من هذا المتصفح؟")) resetInvoice(true);
+      });
+      $("year").textContent = new Date().getFullYear();
+      $("invoiceDate").value = todayLocal();
+
+      if (!loadDraft()) {
+        addItem({ description: "", quantity: 1, price: 0 });
+        render();
+      }
+    })();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./service-worker.js")
+          .catch(function (error) {
+            console.warn("تعذر تسجيل Service Worker:", error);
+          });
+      });
+    }
+  </script>
+
+</body>
+</html>
